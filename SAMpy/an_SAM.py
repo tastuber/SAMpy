@@ -141,7 +141,7 @@ def find_tris_multi_pavg(ccs,cdir,ny=256,nx=256,meters=False,uv=False,pscam=0.06
         p1 = pyfits.getdata(ib+'1.fits')
         p2 = pyfits.getdata(ib+'2.fits')
         ccall.append([p0,p1,p2])
-    return np.array(ccall)
+    return np.array(ccall, dtype=object)
 
 
 
@@ -194,7 +194,7 @@ def find_tris_multi(ccs,cdir,ny=256,nx=256,meters=False,uv=False,pscam=0.065,lam
     if meters: 
         ###returns u,v that go with pixel sampling measured in m
         ###need to flip us to get to true u,v coords
-        ccall2 = np.array(copy.deepcopy(ccall))
+        ccall2 = np.array(copy.deepcopy(ccall), dtype=object)
         psc = 1.0/(float(nx)*pscam)*206265.0*lamc*1e-06
         ccall2 = ccall2 - int(ny/2)
         ccall2 = ccall2*psc
@@ -202,7 +202,7 @@ def find_tris_multi(ccs,cdir,ny=256,nx=256,meters=False,uv=False,pscam=0.065,lam
             for i in range(len(ccall2)):
                 ccall2[i][:,:,0] = -ccall2[i][:,:,0]
         return ccall2
-    return np.array(ccall)
+    return np.array(ccall, dtype=object)
 
 def make_blens(mdir):
     """
@@ -406,7 +406,7 @@ def calc_cps_multi(ims,cdir,display=True,nx=256,ny=256,useW=True,save_allpix=Fal
         pyfits.writeto(filebase+'_cps.fits',cps,overwrite='True')
         pyfits.writeto(filebase+'_cpcov.fits',cov,overwrite='True')
     else: cov,var,stdE = None,None,None
-    return np.array([bs_all,cps,Tas,cov,var,stdE])
+    return np.array([bs_all,cps,Tas,cov,var,stdE], dtype=object)
 
 def calc_cps_pavg(ims,cdir,display=True,nx=256,ny=256,useW=True,save_allpix=False,filebase='',redo_calc=False): #Master function
     """
@@ -435,7 +435,7 @@ def calc_cps_pavg(ims,cdir,display=True,nx=256,ny=256,useW=True,save_allpix=Fals
         pyfits.writeto(filebase+'_cps.fits',cps,overwrite='True')
         pyfits.writeto(filebase+'_cpcov.fits',cov,overwrite='True')
     else: cov,var,stdE = None,None,None
-    return np.array([bs_all,cps,Tas,cov,var,stdE])
+    return np.array([bs_all,cps,Tas,cov,var,stdE], dtype=object)
 
 
 def calc_cps_multi_groups(ims,cdir,display=True,nx=256,ny=256,useW=True,save_allpix=False,filename='',redo_calc=False): #Master function
@@ -504,7 +504,7 @@ def calc_cps_multi_DFT(ims,cdir,display=True,nx=256,ny=256,useW=True,save_allpix
     if save_allpix: fout.close()
     if len(ims)>1: cov,var,stdE = gen_cov(cps,cas,W=Aas,useW=useW) 
     else: cov,var,stdE = None,None,None
-    return np.array([bs_all,cps,Tas,cov,var,stdE])
+    return np.array([bs_all,cps,Tas,cov,var,stdE], dtype=object)
 
 def gen_cov(mean,data,W=None,useW=True):
     """
@@ -629,7 +629,7 @@ def calc_v2s(ims,mdir,nx=256,ny=256,display=False,save_allpix=True,filename=None
     if len(ims)>1: cov,var,stdE = gen_cov(v2m,v2sc,useW=False)
     else: cov,var,stdE = None,None,None
     if save_allpix: fout.close()
-    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs])
+    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs], dtype=object)
 
 def calc_v2s_groups(ims,mdir,nx=256,ny=256,display=False,save_allpix=True,filename=None):
     """
@@ -702,7 +702,7 @@ def calc_v2s_groups(ims,mdir,nx=256,ny=256,display=False,save_allpix=True,filena
     if len(ims)>1: cov,var,stdE = gen_cov(v2m,v2sc,useW=False)
     else: cov,var,stdE = None,None,None
     if save_allpix: fout.close()
-    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs])
+    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs], dtype=object)
 
 def calc_v2s_single(ims,mdir,nx=256,ny=256,display=False):
     """
@@ -743,7 +743,7 @@ def calc_v2s_single(ims,mdir,nx=256,ny=256,display=False):
     v2m = np.mean(v2sc,axis=0)
     if len(ims)>1: cov,var,stdE = gen_cov(v2m,v2sc,useW=False)
     else: cov,var,stdE = None,None,None
-    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs])
+    return np.array([v2m, cov, var, stdE, v2sc, amps, vun, vbs], dtype=object)
 
 def calc_cvis(ims,mdir,nx=256,ny=256,display=False,save_allpix=False,filebase='',
               subpixel=False,write_FTs=False):
@@ -824,7 +824,7 @@ def calc_cvis(ims,mdir,nx=256,ny=256,display=False,save_allpix=False,filebase=''
     #else: cov,var,stdE = None,None,None
     cov,var,stdE = None,None,None
     if save_allpix: fout.close()
-    return np.array([amps_m, phis_m, cov, var, stdE, phis_all])
+    return np.array([amps_m, phis_m, cov, var, stdE, phis_all], dtype=object)
 
 def calc_cvis_groups(ims,mdir,nx=256,ny=256,display=False,save_allpix=False,filename='',subpixel=False):
     """
@@ -882,4 +882,4 @@ def calc_cvis_groups(ims,mdir,nx=256,ny=256,display=False,save_allpix=False,file
     #else: cov,var,stdE = None,None,None
     cov,var,stdE = None,None,None
     if save_allpix: fout.close()
-    return np.array([amps_m, phis_m, cov, var, stdE, phis_all, vcs, vbs])
+    return np.array([amps_m, phis_m, cov, var, stdE, phis_all, vcs, vbs], dtype=object)

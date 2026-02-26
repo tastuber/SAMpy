@@ -296,7 +296,7 @@ def badpixels(ims,bp=[],size=1,display=False):
         -takes mean of good pixels in size by size box around each bad pixel
         -replaces bad pixels with that mean, marks them as good
     """
-    if bp==[]:
+    if len(bp)==0:
         return ims
     imsb = copy.deepcopy(ims)
     print(ims.shape)
@@ -313,9 +313,9 @@ def badpixels(ims,bp=[],size=1,display=False):
             #print(ps)
             y,x = ps[0][ind],ps[1][ind]
             bottom = y < size
-            top = y > len(bp)-size
+            top = y > len(bp[ii])-size
             left = x < size
-            right = x > len(bp[0])-size
+            right = x > len(bp[ii][0])-size
             bl = y-size
             tl = y+size+1
             ll = x-size

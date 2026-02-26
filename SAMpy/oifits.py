@@ -71,7 +71,7 @@ For further information, contact Paul Boley (pboley@urfu.ru).
 """
 
 import numpy as np
-from numpy import double, bool, ma
+from numpy import double, ma
 #try:
 #    import pyfits
 #except ImportError:
