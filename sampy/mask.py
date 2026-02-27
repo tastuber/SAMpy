@@ -40,7 +40,9 @@ def filter_significant_eigenvectors(matrix):
 def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656,
                 n_pixels=256, rotation=0, x_offset=0, y_offset=0,
                 zero_spacing_radius=125, spectral_sampling=20, recompute=False,
-                fourier_cutoff=0.5, desired_plate_scale=0.025):
+                fourier_cutoff=0.5, mask_file=None, subaperture_diameter=None,
+                hole_shape='hexagonal', filter_file=None,
+                desired_plate_scale=0.025):
     """Generate Fourier-plane sampling coordinates for an aperture mask.
 
     Performs the following steps:
@@ -56,15 +58,22 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
 
     All outputs are written as FITS files to ``output_dir``.
 
+    For NIRISS, the existing shortcut parameters (``inst``, ``jwst_filt``)
+    continue to work as before.  For a custom instrument, supply
+    ``mask_file``, ``subaperture_diameter``, and ``filter_file`` together;
+    providing only a subset raises ``ValueError``.
+
     Parameters
     ----------
     output_dir : str
         Directory for output coordinate files (created if needed).
     jwst_filt : str
         JWST/NIRISS filter name: ``'f227w'``, ``'f380m'``, ``'f430m'``,
-        or ``'f480m'``.
+        or ``'f480m'``.  Ignored when ``filter_file`` is provided.
     inst : str
-        Instrument name (currently only ``'niriss'`` is supported).
+        Instrument name (currently only ``'niriss'`` is supported as a
+        built-in shortcut).  Ignored when the custom instrument parameters
+        are provided.
     pixel_scale : float
         Pixel scale in arcseconds per pixel.
     n_pixels : int
@@ -83,33 +92,77 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
     fourier_cutoff : float
         Threshold for selecting Fourier-plane sampling pixels
         (fraction of peak power).
+    mask_file : str or None
+        Path to a text file with hole (x, y) coordinates in meters,
+        one row per hole.  Required for custom instruments.
+    subaperture_diameter : float or None
+        Subaperture size in meters.  For hexagonal holes this is the
+        flat-to-flat distance; for circular holes this is the diameter.
+        Required for custom instruments.
+    hole_shape : str
+        Subaperture geometry: ``'hexagonal'`` or ``'circular'``.
+    filter_file : str or None
+        Path to a filter transmission curve text file (whitespace-
+        delimited, one header line, wavelength in microns in column 0,
+        throughput in column 1).  Required for custom instruments.
     desired_plate_scale : float
         Plate scale in meters per pixel used for the Fourier-plane pupil
         model.  Controls how finely the subapertures are sampled when
         computing synthetic power spectra.  Smaller values give finer
         sampling at higher computational cost.  The default (0.025) is
-        appropriate for NIRISS.
+        appropriate for NIRISS; instruments with longer baselines (e.g.
+        LBTI) may need a smaller value.
     """
-    # Map filter name to transmission file
-    filter_map = {
-        'f227w': 'NIRISS_F277W.txt',
-        'f380m': 'NIRISS_F380M.txt',
-        'f430m': 'NIRISS_F430M.txt',
-        'f480m': 'NIRISS_F480M.txt',
+    # ------------------------------------------------------------------
+    # Validate custom-instrument parameter set (fail-fast)
+    # ------------------------------------------------------------------
+    custom_params = {
+        'mask_file': mask_file,
+        'subaperture_diameter': subaperture_diameter,
+        'filter_file': filter_file,
     }
-    if jwst_filt not in filter_map:
-        raise ValueError(
-            f"jwst_filt must be one of {list(filter_map.keys())}, "
-            f"got '{jwst_filt}'"
-        )
-    transmission_file = str(get_data_path(filter_map[jwst_filt]))
+    provided = {k for k, v in custom_params.items() if v is not None}
+    missing = set(custom_params) - provided
+    use_custom = len(provided) > 0
 
-    if inst == 'niriss':
-        n_holes = 7
-        subaperture_diameter = 0.75  # flat-to-flat distance in meters
-        mask_file = str(get_data_path('NIRISS_7holeMask.txt'))
+    if use_custom and missing:
+        raise ValueError(
+            "Custom instrument requires mask_file, subaperture_diameter, "
+            "and filter_file to all be specified. "
+            f"Missing: {', '.join(sorted(missing))}"
+        )
+
+    if hole_shape not in ('hexagonal', 'circular'):
+        raise ValueError(
+            f"hole_shape must be 'hexagonal' or 'circular', got '{hole_shape}'"
+        )
+
+    # ------------------------------------------------------------------
+    # Resolve mask geometry and filter transmission file
+    # ------------------------------------------------------------------
+    if use_custom:
+        transmission_file = filter_file
     else:
-        raise ValueError(f"inst must be 'niriss', got '{inst}'")
+        # Legacy NIRISS path
+        filter_map = {
+            'f227w': 'NIRISS_F277W.txt',
+            'f380m': 'NIRISS_F380M.txt',
+            'f430m': 'NIRISS_F430M.txt',
+            'f480m': 'NIRISS_F480M.txt',
+        }
+        if jwst_filt not in filter_map:
+            raise ValueError(
+                f"jwst_filt must be one of {list(filter_map.keys())}, "
+                f"got '{jwst_filt}'"
+            )
+        transmission_file = str(get_data_path(filter_map[jwst_filt]))
+
+        if inst == 'niriss':
+            subaperture_diameter = 0.75  # flat-to-flat distance in meters
+            mask_file = str(get_data_path('NIRISS_7holeMask.txt'))
+            hole_shape = 'hexagonal'
+        else:
+            raise ValueError(f"inst must be 'niriss', got '{inst}'")
 
     # Create output directory
     if not os.path.isdir(output_dir):
@@ -117,6 +170,9 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
 
     # Load and transform mask coordinates
     hole_positions_raw = np.loadtxt(mask_file)
+    if hole_positions_raw.ndim == 1:
+        hole_positions_raw = hole_positions_raw.reshape(1, -1)
+    n_holes = len(hole_positions_raw)
     hole_positions_raw[np.where(hole_positions_raw[:, 0] > 0)] += np.array(
         [x_offset, y_offset]
     )
@@ -233,35 +289,43 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                     dtype=int
                 )
 
-                # Hexagonal holes (NIRISS)
-                hex_side = subaperture_diameter / desired_plate_scale / math.sqrt(3)
-                circumscribed_r = hex_side + 1.5  # padding for rounding
-                rotation_rad = np.radians(-rotation)
-                yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
-                for hole_center in hole_pair_pixels:
-                    # Build hexagon for this hole.  Vertices are in
-                    # (col, row) order; the original code passes
-                    # Point(row, col), so Shapely sees x=row, y=col —
-                    # a consistent transpose that the rest of the
-                    # pipeline expects.  The bounding circle must
-                    # therefore be centred at the transposed position
-                    # so that candidates match the polygon.
-                    vertices = []
-                    for vertex_idx in range(6):
-                        angle = np.radians(vertex_idx * 60) + rotation_rad
-                        vx = hole_center[1] + hex_side * np.sin(angle)
-                        vy = hole_center[0] + hex_side * np.cos(angle)
-                        vertices.append(np.array([vx, vy]))
-                    hexagon = Polygon(np.array(vertices))
+                if hole_shape == 'hexagonal':
+                    hex_side = subaperture_diameter / desired_plate_scale / math.sqrt(3)
+                    circumscribed_r = hex_side + 1.5  # padding for rounding
+                    rotation_rad = np.radians(-rotation)
+                    yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
+                    for hole_center in hole_pair_pixels:
+                        # Build hexagon for this hole.  Vertices are in
+                        # (col, row) order; the original code passes
+                        # Point(row, col), so Shapely sees x=row, y=col —
+                        # a consistent transpose that the rest of the
+                        # pipeline expects.  The bounding circle must
+                        # therefore be centred at the transposed position
+                        # so that candidates match the polygon.
+                        vertices = []
+                        for vertex_idx in range(6):
+                            angle = np.radians(vertex_idx * 60) + rotation_rad
+                            vx = hole_center[1] + hex_side * np.sin(angle)
+                            vy = hole_center[0] + hex_side * np.cos(angle)
+                            vertices.append(np.array([vx, vy]))
+                        hexagon = Polygon(np.array(vertices))
 
-                    # Pre-filter in the transposed space that matches
-                    # the Point(row, col) / polygon convention
-                    dist = np.sqrt((yy - hole_center[1])**2
-                                   + (xx - hole_center[0])**2)
-                    candidates = np.argwhere(dist <= circumscribed_r)
-                    for py, px in candidates:
-                        if hexagon.contains(Point(py, px)):
-                            pupil[py, px] = 1.0
+                        # Pre-filter in the transposed space that matches
+                        # the Point(row, col) / polygon convention
+                        dist = np.sqrt((yy - hole_center[1])**2
+                                       + (xx - hole_center[0])**2)
+                        candidates = np.argwhere(dist <= circumscribed_r)
+                        for py, px in candidates:
+                            if hexagon.contains(Point(py, px)):
+                                pupil[py, px] = 1.0
+
+                elif hole_shape == 'circular':
+                    radius_px = (subaperture_diameter / 2.0) / desired_plate_scale
+                    yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
+                    for hole_center in hole_pair_pixels:
+                        dist = np.sqrt((yy - hole_center[0])**2
+                                       + (xx - hole_center[1])**2)
+                        pupil += (dist <= radius_px).astype(float)
 
                 if wl_idx == 0:
                     plt.imshow(pupil, origin='lower')
@@ -291,35 +355,43 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
             )
             power_spectrum = power_spectrum / np.amax(power_spectrum)
 
-            # Mask central peak (hexagonal for NIRISS)
-            mask_layer = np.zeros(power_spectrum.shape)
-            mask_center = (n_pixels // 2, n_pixels // 2)
-            mask_side = (int(125.0 / 4.0) / 4.8 * 3.8
-                         * n_pixels / 257 / math.sqrt(3))
-            vertices = []
-            rotation_rad = np.radians(-rotation)
-            for mask_vtx_idx in range(6):
-                angle = np.radians(mask_vtx_idx * 60 + 30) + rotation_rad
-                vx = mask_center[0] + mask_side * np.sin(angle)
-                vy = mask_center[1] + mask_side * np.cos(angle)
-                vertices.append(np.array([vx, vy]))
-            mask_hexagon = Polygon(np.array(vertices))
-            hex_mask = []
-            for pixel_row in pixel_grid:
-                row_mask = []
-                for pixel in pixel_row:
-                    if mask_hexagon.contains(Point(pixel)):
-                        row_mask.append(1)
-                    else:
-                        row_mask.append(0)
-                hex_mask.append(np.array(row_mask))
-            mask_layer = mask_layer + hex_mask
-            mask_layer = 1 - mask_layer
-            mask_layer = np.transpose(mask_layer)
-            power_spectrum = np.multiply(mask_layer, power_spectrum)
-            if wl_idx == 0:
-                plt.imshow(power_spectrum ** 0.1)
-                plt.show()
+            # Mask central peak
+            if hole_shape == 'hexagonal':
+                mask_layer = np.zeros(power_spectrum.shape)
+                mask_center = (n_pixels // 2, n_pixels // 2)
+                mask_side = (int(125.0 / 4.0) / 4.8 * 3.8
+                             * n_pixels / 257 / math.sqrt(3))
+                vertices = []
+                rotation_rad = np.radians(-rotation)
+                for mask_vtx_idx in range(6):
+                    angle = np.radians(mask_vtx_idx * 60 + 30) + rotation_rad
+                    vx = mask_center[0] + mask_side * np.sin(angle)
+                    vy = mask_center[1] + mask_side * np.cos(angle)
+                    vertices.append(np.array([vx, vy]))
+                mask_hexagon = Polygon(np.array(vertices))
+                hex_mask = []
+                for pixel_row in pixel_grid:
+                    row_mask = []
+                    for pixel in pixel_row:
+                        if mask_hexagon.contains(Point(pixel)):
+                            row_mask.append(1)
+                        else:
+                            row_mask.append(0)
+                    hex_mask.append(np.array(row_mask))
+                mask_layer = mask_layer + hex_mask
+                mask_layer = 1 - mask_layer
+                mask_layer = np.transpose(mask_layer)
+                power_spectrum = np.multiply(mask_layer, power_spectrum)
+                if wl_idx == 0:
+                    plt.imshow(power_spectrum ** 0.1)
+                    plt.show()
+
+            elif hole_shape == 'circular':
+                center = n_pixels // 2
+                yy, xx = np.ogrid[:n_pixels, :n_pixels]
+                dist = np.sqrt((yy - center)**2 + (xx - center)**2)
+                circular_mask = (dist > zero_spacing_radius).astype(float)
+                power_spectrum = power_spectrum * circular_mask
 
             baseline_power[bl_idx] = power_spectrum
             total_power_spectrum += power_spectrum
