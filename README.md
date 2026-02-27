@@ -1,35 +1,73 @@
 # SAMpy
-A Fourier-Plane Pipeline for NIRISS AMI Data (and more!)
 
-See [Sallum & Eisner 2017](https://ui.adsabs.harvard.edu/abs/2017ApJS..233....9S/abstract) and [Sallum et al. 2022](https://ui.adsabs.harvard.edu/abs/2022SPIE12183E..2MS/abstract)) for descriptions of the pipeline that morphed into SAMpy, and SAMpy itself, respectively. This came together thanks to several people (including, but not limited to the following alphabetical list):
+A Fourier-Plane Pipeline for NIRISS AMI Data
 
-- Josh Eisner
-- Kenzie Lach
-- Shrishmoy Ray
-- Steph Sallum
-- Christina Vides
+See [Sallum & Eisner 2017](https://ui.adsabs.harvard.edu/abs/2017ApJS..233....9S/abstract) and [Sallum et al. 2022](https://ui.adsabs.harvard.edu/abs/2022SPIE12183E..2MS/abstract) for descriptions of the pipeline.
 
-This version has just one example notebook for the JWST/NIRISS mask, but you can use the code for arbitrary mask designs. We'll be uploading examples for some ground based setups (e.g. VLT/SPHERE, Keck/NIRC2) soon!
+## Installation
 
-To get started, clone the repository:
+Clone the repository and enter the directory:
 
 ```
-git clone https://github.com/JWST-ERS1386-AMI/SAMpy
+git clone https://github.com/jordan-stone/SAMpy.git
+cd SAMpy
 ```
 
-Then use conda to create an environment for SAMpy using the SAMpy.yml file:
+Option 1 (recommended): use conda to create a new environment:
 
 ```
-conda env create --file SAMpy.yml
-```
-
-Activate the SAMpy environment, and open jupyter notebook:
-
-```
+conda env create --file environment.yml
 conda activate SAMpy
-jupyter notebook
 ```
 
-Then go ahead and open up the notebook SAMpy_ABDor_example_CP_V2_T3A.ipynb to see how things work. 
+Option 2: install in editable mode with pip:
 
+```
+pip install -e ".[notebook]"
+```
 
+## Quick start
+
+After installation, navigate to `examples/` and open the example notebook:
+
+```
+cd examples
+jupyter notebook notebooks/ABDor_closure_phases.ipynb
+```
+
+## Package structure
+
+```
+sampy/               # Installable Python package
+├── mask.py          # Aperture mask geometry and coordinate setup
+├── reduction.py     # Image reading, cleaning, windowing
+├── analysis.py      # Closure phases, visibilities, covariances
+├── calibration.py   # Polynomial calibration
+├── oi.py            # OIFITS file generation
+├── utils.py         # Image centering and Fourier utilities
+├── fitting/         # Model fitting subpackage
+│   ├── mcmc.py      # emcee parallel-tempered MCMC
+│   └── grid.py      # Chi-squared grid search
+└── data/            # Bundled filter and mask files
+
+examples/            # Demonstration material (not installed)
+├── notebooks/       # Jupyter notebooks
+├── scripts/         # Standalone utility scripts
+└── data/            # Example FITS data
+```
+
+## Fork maintainer
+
+* Jordan Stone
+
+## Original authors
+
+* Josh Eisner
+* Kenzie Lach
+* Shrishmoy Ray
+* Steph Sallum
+* Christina Vides
+
+## License
+
+GPL-3.0

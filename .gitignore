@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+*.so
+*.whl
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter
+.ipynb_checkpoints/
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy / type checkers
+.mypy_cache/
+
+# Vim
+*.swp
+*.swo
+*~
+.netrwhist
+Session.vim
+tags
+
+# OS
+.DS_Store
+Thumbs.db
+
+*.fits
+*.oifits
+*.hdf5
+*.pdf

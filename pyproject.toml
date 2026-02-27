@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sampy-ami"
+version = "0.1.0"
+description = "A Fourier-Plane Pipeline for NIRISS AMI Data (and more!)"
+readme = "README.md"
+license = "GPL-3.0-only"
+requires-python = ">=3.9,<3.12"
+authors = [
+    { name = "Steph Sallum" },
+    { name = "Josh Eisner" },
+    { name = "Kenzie Lach" },
+    { name = "Shrishmoy Ray" },
+    { name = "Christina Vides" },
+]
+
+maintainers = [
+    { name = "Jordan Stone", email = "3971752+jordan-stone@users.noreply.github.com" },
+]
+
+dependencies = [
+    "numpy>=1.22",
+    "scipy>=1.7",
+    "matplotlib>=3.5",
+    "pandas>=1.4",
+    "astropy>=5.1",
+    "emcee>=2.2,<3",
+    "corner>=2.2",
+    "shapely>=1.8",
+    "oifits>=0.4",
+    "h5py",
+    "tqdm",
+    "ipywidgets",
+    "jwst>=1.6",
+    "poppy>=1.0",
+    "photutils>=1.5",
+]
+
+[project.optional-dependencies]
+notebook = [
+    "jupyter",
+    "notebook",
+]
+
+[tool.setuptools.packages.find]
+include = ["sampy*"]
+
+[tool.setuptools.package-data]
+sampy = ["data/*.txt", "data/*.fits"]
