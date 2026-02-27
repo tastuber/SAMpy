@@ -443,7 +443,13 @@ def calc_cps_single_DFT(images, mask_dir, nx=256, ny=256, display=False,
         closure_phases, closure_phase_per_image,
         weights=triple_amp_per_image, use_weights=use_weights,
     )
-    return np.array([bispectra_all, closure_phases, covariance, variance, std_error], dtype=object)
+    return {
+        'raw': bispectra_all,
+        'closure_phases': closure_phases,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+    }
 
 def calc_cps_single(images, mask_dir, nx=256, ny=256, display=False,
                     use_weights=True):
@@ -505,7 +511,13 @@ def calc_cps_single(images, mask_dir, nx=256, ny=256, display=False,
         closure_phases, closure_phase_per_image,
         weights=triple_amp_per_image, use_weights=use_weights,
     )
-    return np.array([bispectra_all, closure_phases, covariance, variance, std_error], dtype=object)
+    return {
+        'raw': bispectra_all,
+        'closure_phases': closure_phases,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+    }
 
 
 
@@ -789,7 +801,14 @@ def calc_cps_multi(images, mask_dir, display=True, nx=256, ny=256,
     else:
         covariance, variance, std_error = None, None, None
 
-    return np.array([bispectra_all, closure_phases, mean_triple_amps, covariance, variance, std_error], dtype=object)
+    return {
+        'raw': bispectra_all,
+        'closure_phases': closure_phases,
+        'triple_amps': mean_triple_amps,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+    }
 
 def calc_cps_pavg(images, mask_dir, display=True, nx=256, ny=256,
                   use_weights=True, save_allpix=False, filebase='',
@@ -874,7 +893,14 @@ def calc_cps_pavg(images, mask_dir, display=True, nx=256, ny=256,
     else:
         covariance, variance, std_error = None, None, None
 
-    return np.array([bispectra_all, closure_phases, mean_triple_amps, covariance, variance, std_error], dtype=object)
+    return {
+        'raw': bispectra_all,
+        'closure_phases': closure_phases,
+        'triple_amps': mean_triple_amps,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+    }
 
 
 def calc_cps_multi_groups(image_cubes, mask_dir, display=True, nx=256, ny=256,
@@ -1029,7 +1055,14 @@ def calc_cps_multi_DFT(images, mask_dir, display=True, nx=256, ny=256,
     else:
         covariance, variance, std_error = None, None, None
 
-    return np.array([bispectra_all, closure_phases, mean_triple_amps, covariance, variance, std_error], dtype=object)
+    return {
+        'raw': bispectra_all,
+        'closure_phases': closure_phases,
+        'triple_amps': mean_triple_amps,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+    }
 
 def gen_cov(mean_values, per_image_values, weights=None, use_weights=True):
     """Compute covariance matrix, variance, and standard error of the mean.
@@ -1247,7 +1280,16 @@ def calc_v2s(images, mask_dir, nx=256, ny=256, display=False,
     if save_allpix:
         fout.close()
 
-    return np.array([v2_mean, covariance, variance, std_error, v2_bias_corrected, np.array(amplitudes), np.array(unnormalized_per_image), np.array(bias_per_image)], dtype=object)
+    return {
+        'v2': v2_mean,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+        'v2_scatter': v2_bias_corrected,
+        'amplitudes': np.array(amplitudes),
+        'unnormalized': np.array(unnormalized_per_image),
+        'bias': np.array(bias_per_image),
+    }
 
 def calc_v2s_groups(image_cubes, mask_dir, nx=256, ny=256, display=False,
                     save_allpix=False, filename=None):
@@ -1361,7 +1403,16 @@ def calc_v2s_groups(image_cubes, mask_dir, nx=256, ny=256, display=False,
     if save_allpix:
         fout.close()
 
-    return np.array([v2_mean, covariance, variance, std_error, v2_bias_corrected, np.array(amplitudes_all), np.array(unnormalized_all), np.array(bias_all)], dtype=object)
+    return {
+        'v2': v2_mean,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+        'v2_scatter': v2_bias_corrected,
+        'amplitudes': np.array(amplitudes_all),
+        'unnormalized': np.array(unnormalized_all),
+        'bias': np.array(bias_all),
+    }
 
 def calc_v2s_single(images, mask_dir, nx=256, ny=256, display=False):
     """Compute squared visibilities using a single pixel per baseline.
@@ -1440,7 +1491,16 @@ def calc_v2s_single(images, mask_dir, nx=256, ny=256, display=False):
     else:
         covariance, variance, std_error = None, None, None
 
-    return np.array([v2_mean, covariance, variance, std_error, v2_all, np.array(amplitudes), np.array(unnormalized_per_image), np.array(bias_per_image)], dtype=object)
+    return {
+        'v2': v2_mean,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+        'v2_scatter': v2_all,
+        'amplitudes': np.array(amplitudes),
+        'unnormalized': np.array(unnormalized_per_image),
+        'bias': np.array(bias_per_image),
+    }
 
 def calc_cvis(images, mask_dir, nx=256, ny=256, display=False,
               save_allpix=False, filebase='', subpixel=False,
@@ -1553,7 +1613,14 @@ def calc_cvis(images, mask_dir, nx=256, ny=256, display=False,
     if save_allpix:
         fout.close()
 
-    return np.array([mean_amplitudes, mean_phases, covariance, variance, std_error, phases_per_image], dtype=object)
+    return {
+        'amplitudes': mean_amplitudes,
+        'phases': mean_phases,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+        'phases_per_image': phases_per_image,
+    }
 
 def calc_cvis_groups(image_cubes, mask_dir, nx=256, ny=256, display=False,
                      save_allpix=False, filename='', subpixel=False):
@@ -1659,4 +1726,13 @@ def calc_cvis_groups(image_cubes, mask_dir, nx=256, ny=256, display=False,
     if save_allpix:
         fout.close()
 
-    return np.array([mean_amplitudes, mean_phases, covariance, variance, std_error, phases_per_image, complex_vis_all, bias_all], dtype=object)
+    return {
+        'amplitudes': mean_amplitudes,
+        'phases': mean_phases,
+        'covariance': covariance,
+        'variance': variance,
+        'std_error': std_error,
+        'phases_per_image': phases_per_image,
+        'complex_vis': complex_vis_all,
+        'bias': bias_all,
+    }
