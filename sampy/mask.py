@@ -42,7 +42,7 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                 zero_spacing_radius=125, spectral_sampling=20, recompute=False,
                 fourier_cutoff=0.5, mask_file=None, subaperture_diameter=None,
                 hole_shape='hexagonal', filter_file=None,
-                desired_plate_scale=0.025):
+                pupil_pixel_scale=0.025):
     """Generate Fourier-plane sampling coordinates for an aperture mask.
 
     Performs the following steps:
@@ -105,13 +105,11 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
         Path to a filter transmission curve text file (whitespace-
         delimited, one header line, wavelength in microns in column 0,
         throughput in column 1).  Required for custom instruments.
-    desired_plate_scale : float
-        Plate scale in meters per pixel used for the Fourier-plane pupil
-        model.  Controls how finely the subapertures are sampled when
-        computing synthetic power spectra.  Smaller values give finer
-        sampling at higher computational cost.  The default (0.025) is
-        appropriate for NIRISS; instruments with longer baselines (e.g.
-        LBTI) may need a smaller value.
+    pupil_pixel_scale : float
+        Pupil-plane model scale in meters per pixel.  The model grid
+        size is chosen so that the synthetic PSF matches ``pixel_scale``.
+        Smaller values give finer subaperture sampling at higher cost.
+        Default 0.025 gives ~30 pixels across each NIRISS subaperture.
     """
     # ------------------------------------------------------------------
     # Validate custom-instrument parameter set (fail-fast)
@@ -275,7 +273,7 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
 
                 # Compute mask in Fourier plane at desired plate scale
                 n_pix_ft = int(np.round(
-                    1.0 / (desired_plate_scale / (206265.0 * wl * 1e-06) * pixel_scale)
+                    1.0 / (pupil_pixel_scale / (206265.0 * wl * 1e-06) * pixel_scale)
                 ))
                 if n_pix_ft % 2 == 0:
                     n_pix_ft += 1
@@ -285,12 +283,12 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                 pupil = np.zeros([n_pix_ft, n_pix_ft])
                 hole_pair_pixels = np.array(
                     np.round(np.array([n_pix_ft // 2, n_pix_ft // 2])
-                             + hole_pairs[bl_idx] / desired_plate_scale),
+                             + hole_pairs[bl_idx] / pupil_pixel_scale),
                     dtype=int
                 )
 
                 if hole_shape == 'hexagonal':
-                    hex_side = subaperture_diameter / desired_plate_scale / math.sqrt(3)
+                    hex_side = subaperture_diameter / pupil_pixel_scale / math.sqrt(3)
                     circumscribed_r = hex_side + 1.5  # padding for rounding
                     rotation_rad = np.radians(-rotation)
                     yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
@@ -320,7 +318,7 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                                 pupil[py, px] = 1.0
 
                 elif hole_shape == 'circular':
-                    radius_px = (subaperture_diameter / 2.0) / desired_plate_scale
+                    radius_px = (subaperture_diameter / 2.0) / pupil_pixel_scale
                     yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
                     for hole_center in hole_pair_pixels:
                         dist = np.sqrt((yy - hole_center[0])**2

@@ -82,7 +82,7 @@ make_coords(
     filter_file='Lband_filter.txt',   # wavelength (µm) vs throughput
     hole_shape='circular',            # 'hexagonal' or 'circular'
     pixel_scale=0.0107,               # arcsec/pixel
-    desired_plate_scale=0.006,        # finer sampling for longer baselines (default 0.025)
+    pupil_pixel_scale=0.006,          # finer sampling for smaller subapertures (default 0.025)
     n_pixels=512,
     recompute=True,
 )
@@ -95,7 +95,7 @@ make_coords(
 
 **Key parameters:**
 
-- `desired_plate_scale` controls the Fourier-plane pupil sampling resolution (meters/pixel). The default (0.025) is appropriate for NIRISS. Instruments with longer baselines (e.g. LBTI) may need a smaller value for adequate sampling.
+- `pupil_pixel_scale` controls the pupil-plane model resolution in meters per pixel. Smaller values sample the subapertures more finely at higher computational cost. The default (0.025) gives ~30 pixels across each NIRISS subaperture; instruments with smaller subapertures may need a smaller value.
 - `zero_spacing_radius` sets the radius (in pixels) of the exclusion zone around the zero-spacing (DC) peak in the power spectrum. You may need to tune this for your instrument geometry.
 
 Each mask directory is specific to a mask geometry + filter pair. If you change the filter but keep the same mask, you need a new output directory (or `recompute=True`).
