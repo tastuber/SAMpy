@@ -40,7 +40,7 @@ def filter_significant_eigenvectors(matrix):
 def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656,
                 n_pixels=256, rotation=0, x_offset=0, y_offset=0,
                 zero_spacing_radius=125, spectral_sampling=20, recompute=False,
-                fourier_cutoff=0.5):
+                fourier_cutoff=0.5, desired_plate_scale=0.025):
     """Generate Fourier-plane sampling coordinates for an aperture mask.
 
     Performs the following steps:
@@ -83,6 +83,12 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
     fourier_cutoff : float
         Threshold for selecting Fourier-plane sampling pixels
         (fraction of peak power).
+    desired_plate_scale : float
+        Plate scale in meters per pixel used for the Fourier-plane pupil
+        model.  Controls how finely the subapertures are sampled when
+        computing synthetic power spectra.  Smaller values give finer
+        sampling at higher computational cost.  The default (0.025) is
+        appropriate for NIRISS.
     """
     # Map filter name to transmission file
     filter_map = {
@@ -212,7 +218,6 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                 trans = transmissions[wl_idx]
 
                 # Compute mask in Fourier plane at desired plate scale
-                desired_plate_scale = 0.025
                 n_pix_ft = int(np.round(
                     1.0 / (desired_plate_scale / (206265.0 * wl * 1e-06) * pixel_scale)
                 ))
@@ -220,11 +225,6 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                     n_pix_ft += 1
                 if total_pupil is None:
                     total_pupil = np.zeros([n_pix_ft, n_pix_ft])
-
-                ft_pixel_grid = np.array([
-                    [[y, x] for x in range(n_pix_ft)]
-                    for y in range(n_pix_ft)
-                ])
 
                 pupil = np.zeros([n_pix_ft, n_pix_ft])
                 hole_pair_pixels = np.array(
@@ -235,8 +235,17 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
 
                 # Hexagonal holes (NIRISS)
                 hex_side = subaperture_diameter / desired_plate_scale / math.sqrt(3)
+                circumscribed_r = hex_side + 1.5  # padding for rounding
                 rotation_rad = np.radians(-rotation)
+                yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
                 for hole_center in hole_pair_pixels:
+                    # Build hexagon for this hole.  Vertices are in
+                    # (col, row) order; the original code passes
+                    # Point(row, col), so Shapely sees x=row, y=col —
+                    # a consistent transpose that the rest of the
+                    # pipeline expects.  The bounding circle must
+                    # therefore be centred at the transposed position
+                    # so that candidates match the polygon.
                     vertices = []
                     for vertex_idx in range(6):
                         angle = np.radians(vertex_idx * 60) + rotation_rad
@@ -245,16 +254,14 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                         vertices.append(np.array([vx, vy]))
                     hexagon = Polygon(np.array(vertices))
 
-                    hole_mask = []
-                    for pixel_row in ft_pixel_grid:
-                        row_mask = []
-                        for pixel in pixel_row:
-                            if hexagon.contains(Point(pixel)):
-                                row_mask.append(1)
-                            else:
-                                row_mask.append(0)
-                        hole_mask.append(np.array(row_mask))
-                    pupil = pupil + hole_mask
+                    # Pre-filter in the transposed space that matches
+                    # the Point(row, col) / polygon convention
+                    dist = np.sqrt((yy - hole_center[1])**2
+                                   + (xx - hole_center[0])**2)
+                    candidates = np.argwhere(dist <= circumscribed_r)
+                    for py, px in candidates:
+                        if hexagon.contains(Point(py, px)):
+                            pupil[py, px] = 1.0
 
                 if wl_idx == 0:
                     plt.imshow(pupil, origin='lower')
@@ -277,7 +284,7 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                         n_pix_ft // 2 - half:n_pix_ft // 2 + half
                     ] * trans
                 if wl_idx == 0:
-                    total_pupil += np.transpose(pupil)
+                    total_pupil += pupil
 
             power_spectrum = np.fft.fftshift(
                 abs(np.fft.fft2(np.fft.fftshift(fourier_map)))
@@ -292,7 +299,7 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
             vertices = []
             rotation_rad = np.radians(-rotation)
             for mask_vtx_idx in range(6):
-                angle = np.radians(mask_vtx_idx * 60) + rotation_rad
+                angle = np.radians(mask_vtx_idx * 60 + 30) + rotation_rad
                 vx = mask_center[0] + mask_side * np.sin(angle)
                 vy = mask_center[1] + mask_side * np.cos(angle)
                 vertices.append(np.array([vx, vy]))
