@@ -321,8 +321,8 @@ def make_coords(output_dir, jwst_filt='f380m', inst='niriss', pixel_scale=0.0656
                     radius_px = (subaperture_diameter / 2.0) / pupil_pixel_scale
                     yy, xx = np.ogrid[:n_pix_ft, :n_pix_ft]
                     for hole_center in hole_pair_pixels:
-                        dist = np.sqrt((yy - hole_center[0])**2
-                                       + (xx - hole_center[1])**2)
+                        dist = np.sqrt((yy - hole_center[1])**2
+                                       + (xx - hole_center[0])**2)
                         pupil += (dist <= radius_px).astype(float)
 
                 if wl_idx == 0:
